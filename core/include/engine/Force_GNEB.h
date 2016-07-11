@@ -12,6 +12,7 @@ namespace Engine
 		Force_GNEB(std::shared_ptr<Data::Spin_System_Chain> c);
 
 		void Calculate(std::vector<std::vector<double>> & configurations, std::vector<std::vector<double>> & forces) override;
+		void Calculate_Concurrent(std::vector<std::vector<double>> & configurations, std::vector<std::vector<double>> & forces);
 
 		bool IsConverged() override;
 

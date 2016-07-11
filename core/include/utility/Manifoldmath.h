@@ -9,6 +9,8 @@ namespace Utility
 {
 	namespace Manifoldmath
 	{
+		void Tangent(std::vector<std::vector<double>> & configurations, std::vector<double> energies, int i, std::vector<double> & tangent);
+
 		// Calculates the tangent in configuration space along a configuration chain at configuration idx_img
 		//void Tangent(Data::Spin_System_Chain & c, int idx_img, std::vector<double> & Field);
 		void Tangents(std::vector<std::vector<double>> & configurations, std::vector<double> energies, std::vector<std::vector<double>> & tangents);
