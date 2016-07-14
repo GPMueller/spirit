@@ -68,20 +68,31 @@ namespace Engine
 
 		// Loop over images to calculate the total Effective Field on each Image
 		//		Closure
-		auto getForce = [](std::vector<double> & configuration, std::shared_ptr<Hamiltonian> hamiltonian, double & energy) -> void
+		auto getGradient = [](std::vector<double> & configuration, std::shared_ptr<Hamiltonian> hamiltonian, std::vector<double> & F_gradient) -> void
 		{
-			
+			// The gradient force (unprojected) is simply the effective field
+			hamiltonian->Effective_Field(configuration, F_gradient);
+
 		};
 		//		Loop
 		for (int img = 1; img < noi - 1; ++img)
 		{
-			// The gradient force (unprojected) is simply the effective field
-			this->c->images[img]->hamiltonian->Effective_Field(configurations[img], F_gradient[img]);
+			concurrent_threads[img] = std::thread(getGradient, configurations[img], this->c->images[img]->hamiltonian, F_gradient[img]);
+
 			// NEED A NICER WAY OF DOING THIS:
 			this->c->images[img]->effective_field = F_gradient[img];
+		}
+		//		Join threads
+		for (int i = 1; i < noi-1; ++i)
+		{
+			concurrent_threads[i].join();
+		}
 
+		//		Closure
+		auto getForce = [this](std::vector<std::vector<double>> & configurations, int img, std::vector<std::vector<double>> & F_gradient, std::vector<std::vector<double>> & F_spring, std::vector<std::vector<double>> & forces) -> void
+		{
 			// Calculate Force
-			if (c->climbing_image[img])
+			if (this->c->climbing_image[img])
 			{
 				// We reverse the component in tangent direction
 				Utility::Manifoldmath::Project_Reverse(F_gradient[img], this->c->tangents[img]);
@@ -104,6 +115,7 @@ namespace Engine
 				// Get the scalar product of the vectors
 				double v1v2 = 0.0;
 				int dim;
+				int nos = this->c->images[0]->nos;
 				// Take out component in direction of v2
 				for (int i = 0; i < nos; ++i)
 				{
@@ -151,9 +163,20 @@ namespace Engine
 					forces[img][j] = F_gradient[img][j] + F_spring[img][j];
 				}
 			}// end if climbing
-		}// end for img=1..noi-1
+		};
+		// Loop
+		for (int img = 1; img < noi - 1; ++img)
+		{
+			concurrent_threads[img] = std::thread(getForce, configurations, img, F_gradient, F_spring, forces);
 
-		 // Check for convergence
+		}// end for img=1..noi-1
+		//		Join threads
+		for (int i = 1; i < noi-1; ++i)
+		{
+			concurrent_threads[i].join();
+		}
+
+		// Check for convergence
 		for (int img = 1; img < noi - 1; ++img)
 		{
 			double fmax = this->Force_on_Image_MaxAbsComponent(configurations[img], forces[img]);
@@ -169,7 +192,7 @@ namespace Engine
 
 		unsigned int n_threads = std::thread::hardware_concurrency();
 
-		if (n_threads >= noi || true) Calculate_Concurrent(configurations, forces);
+		if (n_threads >= noi || false) Calculate_Concurrent(configurations, forces);
 		else
 		{
 			int nos = configurations[0].size() / 3;
